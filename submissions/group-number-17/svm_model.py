@@ -20,17 +20,19 @@ tr, va = train[~is_val], train[is_val]
 print(f"Train rows: {len(tr)}, Val rows: {len(va)}")
 
 # Word TF-IDF (single words + word pairs) -> linear SVM
-model = make_pipeline(
-    TfidfVectorizer(ngram_range=(1, 2), min_df=2, sublinear_tf=True),
-    LinearSVC(C=1.0),
-)
+results = []
+for C in [0.01, 0.1, 1, 10]:
+    model = make_pipeline(
+        TfidfVectorizer(ngram_range=(1, 2), min_df=2, sublinear_tf=True),
+        LinearSVC(C=C),
+    )
+    start = time.time()
+    model.fit(tr["text"], tr["label"])
+    secs = time.time() - start
 
-start = time.time()
-model.fit(tr["text"], tr["label"])
-secs = time.time() - start
+    train_auc = roc_auc_score(tr["label"], model.decision_function(tr["text"]))
+    val_auc = roc_auc_score(va["label"], model.decision_function(va["text"]))
+    results.append({"C": C, "train_auroc": train_auc, "val_auroc": val_auc, "train_sec": secs})
+    print(f"C={C:<5} train AUROC={train_auc:.4f}  val AUROC={val_auc:.4f}  ({secs:.1f}s)")
 
-# AUROC only needs a ranking score, so we use the SVM's decision_function
-train_auc = roc_auc_score(tr["label"], model.decision_function(tr["text"]))
-val_auc = roc_auc_score(va["label"], model.decision_function(va["text"]))
-
-print(f"C=1.0  train AUROC={train_auc:.4f}  val AUROC={val_auc:.4f}  ({secs:.1f}s)")
+pd.DataFrame(results).to_csv("svm_results.csv", index=False)
