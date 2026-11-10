@@ -10,7 +10,7 @@ ordering, so this is fair.
 A, B, C are the team's three models. D (char n-grams + SVM) is my follow-up: A and B
 turned out almost identical, so I wanted a model that looks at the text differently.
 
-Update A_C / B_C if Person 1 or 2 change their chosen setting.
+A matches James's logistic_model.py, B matches Anisha's svm_model.py.
 
 Run (from team folder): python nb_model.py   (first)
                         python ensemble.py
@@ -31,7 +31,7 @@ from sklearn.svm import LinearSVC
 
 from common import SEED, load_split
 
-A_C = 10  # Person 1's logistic regression C  <-- CHANGE to Person 1's chosen value
+A_C = 10  # James's chosen C (with 20,000 max features, see logistic_model.py)
 B_C = 1   # Person 2's SVM C (val 0.9434)
 
 nb = pd.read_csv("nb_results.csv").sort_values("val_auroc", ascending=False).iloc[0]
@@ -41,8 +41,9 @@ nb_alpha = float(nb["alpha"])
 tr, va = load_split()
 
 models = {
-    "A": make_pipeline(TfidfVectorizer(ngram_range=(1, 2), min_df=2, sublinear_tf=True),
-                       LogisticRegression(C=A_C, max_iter=2000, random_state=SEED)),
+    "A": make_pipeline(TfidfVectorizer(ngram_range=(1, 2), max_features=20_000),
+                       LogisticRegression(C=A_C, solver="liblinear", max_iter=2000,
+                                          random_state=SEED)),
     "B": make_pipeline(TfidfVectorizer(ngram_range=(1, 2), min_df=2, sublinear_tf=True),
                        LinearSVC(C=B_C)),
     "C": make_pipeline(CountVectorizer(ngram_range=(1, 2), min_df=2, max_features=nb_mf),
